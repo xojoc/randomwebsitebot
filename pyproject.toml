@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "randomwebsitebot"
+version = "0.1.0"
+description = "Tweet or toot random fun websites"
+authors = ["Alexandru Cojocaru <hi@xojoc.pw>"]
+license = "AGPL-3.0-or-later"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+tweepy = "^4.6.0"
+requests = "^2.27.1"
+beautifulsoup4 = "^4.10.0"
+lxml = "^4.8.0"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.931"
+flake8 = "^4.0.1"
+black = "^22.1.0"
+types-requests = "^2.27.11"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
