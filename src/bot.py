@@ -146,7 +146,7 @@ def __hashtags(tags):
 
 
 def build_status(
-    title, url, discussions_url, tags, via_account=None, by_account=None
+    title, url, discussions_url, tags, by_account=None, via_account=None
 ):
     hashtags = __hashtags(tags)
 
@@ -178,14 +178,14 @@ def execute():
     url = get_random_website()
     if not url:
         return False
-    title, twitter_via, twitter_by, success = get_website_info(url)
+    title, twitter_by, twitter_via, success = get_website_info(url)
     if not success:
         logger.warning(f"Cannot fetch website: {url} ...skipping")
         return False
     discussions_url, tags = get_discussions(url)
 
     status = build_status(
-        title, url, discussions_url, tags, twitter_via, twitter_by
+        title, url, discussions_url, tags, twitter_by, twitter_via
     )
     tweet_id = tweet(status)
     logger.info(f"Tweet: {tweet_id}")
