@@ -166,10 +166,10 @@ def build_status(
     if hashtags:
         status += f"{' '.join(hashtags)}\n\n"
 
-    # if by_account:
-    #     status += f"by @{by_account}\n\n"
-    # elif via_account:
-    #     status += f"via @{via_account}\n\n"
+    if by_account:
+        status += f"by @{by_account}\n\n"
+    elif via_account:
+        status += f"via @{via_account}\n\n"
 
     return status.strip()
 
