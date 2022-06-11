@@ -200,6 +200,13 @@ def execute():
 def main():
     random.seed()
     while True:
+        t = 2 * 60 * 60
+        if is_dev():
+            t = 30
+
+        logger.info("Sleep...")
+        time.sleep(t)
+
         try:
             success = execute()
             if not success:
@@ -213,12 +220,6 @@ def main():
 
             logger.error(f"{e}\n\ntrying again...")
             continue
-
-        t = 60 * 60
-        if is_dev():
-            t = 30
-        logger.info("Sleep...")
-        time.sleep(t)
 
 
 if __name__ == "__main__":
