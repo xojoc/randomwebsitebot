@@ -11,7 +11,7 @@ Why not?
 # Who?
 *randomwebsitebot* was written by [Alexandru Cojocaru](https://xojoc.pw).
 
-Websites from [StumblingOn](https://stumblingon.com/).
+Websites from [StumblingOn](https://stumblingon.com/) and [The Forest](https://theforest.link/).
 
 Discussions from [Discussions around the web](https://discu.eu).
 

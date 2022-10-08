@@ -62,7 +62,7 @@ def toot(status):
         return
 
 
-def get_random_website():
+def get_random_website_stumblingon():
     for _ in range(5):
         r = requests.post(
             "https://service.stumblingon.com/getSite",
@@ -71,6 +71,23 @@ def get_random_website():
 
         if r.json().get("ok"):
             return r.json().get("url")
+
+
+def get_random_website_forestlink():
+    for _ in range(5):
+        r = requests.get("https://theforest.link/api/site/")
+        if r.json().get("content"):
+            return r.json().get("content")
+
+
+random_website_functions = [
+    get_random_website_stumblingon,
+    get_random_website_forestlink,
+]
+
+
+def get_random_website():
+    return random.choice(random_website_functions)()
 
 
 def get_website_info(url):
