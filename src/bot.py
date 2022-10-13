@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import base64
 import logging
 import os
 import random
@@ -39,20 +40,65 @@ def tweet(status):
     return status.id
 
 
-def toot(status):
+def upload_screenshot(url):
+    bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
+    api_url = "https://spider.xojoc.pw/api/v0/screenshot"
+    auth = {"Authorization": f"Bearer {bearer_token}"}
+    parameters = {"url": url, "full_page": True}
+
+    resp = requests.get(api_url, parameters, headers=auth)
+    if not resp.ok:
+        print(resp.status_code)
+        print(resp.content)
+        return
+    jimg = resp.json()
+    print(jimg["media_type"])
+
+    access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
+    auth = {"Authorization": f"Bearer {access_token}"}
+    api_url = "https://mastodon.social/api/v1/media"
+
+    files = {
+        "file": (
+            "screenshot.png",
+            base64.b64decode(jimg["content"]),
+            jimg["media_type"],
+        ),
+    }
+    parameters = {
+        "description": f"Screenshot of {url} taken with SpiderAPI",
+        "focus": "(0,1)",
+    }
+
+    media = requests.post(
+        api_url, files=files, params=parameters, headers=auth
+    )
+    if not media.ok:
+        print(media.status_code)
+        print(media.content)
+        return
+
+    media = media.json()
+
+    return media["id"]
+
+
+def toot(status, media_id=None, ignore_dev=False):
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
 
     if not access_token:
         logger.warning("Mastodon: non properly configured")
         return
 
-    if is_dev():
+    if is_dev() and not ignore_dev:
         print(status)
         return random.randint(1, 1_000_000)
 
     api_url = "https://mastodon.social/api/v1/statuses"
     auth = {"Authorization": f"Bearer {access_token}"}
     parameters = {"status": status}
+    if media_id:
+        parameters["media_ids[]"] = [media_id]
 
     r = requests.post(api_url, data=parameters, headers=auth)
     if r.ok:
@@ -60,6 +106,17 @@ def toot(status):
     else:
         logger.error(f"Mastodon post: {r.status_code} {r.reason}\n{status}")
         return
+
+
+def toot_with_screenshot(status, url, ignore_dev=False):
+    media_id = None
+    try:
+        media_id = upload_screenshot(url)
+    except Exception as e:
+        logger.warning(f"Screenshot failed: {e}")
+        media_id = None
+
+    toot(status, media_id, ignore_dev)
 
 
 def get_random_website_stumblingon():
@@ -208,7 +265,7 @@ def execute():
     logger.info(f"Tweet: {tweet_id}")
 
     status = build_status(title, url, discussions_url, tags)
-    toot_id = toot(status)
+    toot_id = toot_with_screenshot(status, url)
     logger.info(f"Toot: {toot_id}")
 
     return True
