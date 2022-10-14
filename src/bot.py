@@ -2,6 +2,7 @@
 
 import base64
 import logging
+import mimetypes
 import os
 import random
 import time
@@ -19,7 +20,34 @@ def is_dev():
     return os.getenv("APP_DEPLOYMENT_ENVIRONMENT", "").lower() != "prod"
 
 
-def tweet(status):
+def take_screenshot(url):
+    bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
+    api_url = "https://spider.xojoc.pw/api/v0/screenshot"
+    auth = {"Authorization": f"Bearer {bearer_token}"}
+    parameters = {"url": url, "full_page": True}
+
+    resp = requests.get(api_url, parameters, headers=auth)
+    if not resp.ok:
+        return
+    jimg = resp.json()
+    content = base64.b64decode(jimg["content"])
+    mime = jimg["media_type"]
+    ext = mimetypes.guess_extension(mime) or ".dat"
+    return (
+        f"screenshot{ext}",
+        content,
+        mime,
+        f"Screenshot of {url} taken with SpiderAPI",
+    )
+
+
+def twitter_upload_screenshot(file, ignore_dev=False):
+    if not file:
+        return
+
+    if is_dev() and not ignore_dev:
+        return
+
     api_key = os.getenv("TWITTER_ACCESS_API_KEY")
     api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
     token = os.getenv("TWITTER_BOT_TOKEN")
@@ -29,44 +57,56 @@ def tweet(status):
         logger.error("Twitter: non properly configured")
         return
 
-    if is_dev():
+    auth = tweepy.OAuthHandler(api_key, api_secret_key)
+    auth.set_access_token(token, token_secret)
+    api = tweepy.API(auth, wait_on_rate_limit=True)
+
+    media = api.simple_upload(
+        file[0], file=file[1], media_category="tweet_image"
+    )
+
+    if media:
+        return media.media_id
+
+
+def tweet(status, media_id=None, ignore_dev=False):
+    api_key = os.getenv("TWITTER_ACCESS_API_KEY")
+    api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
+    token = os.getenv("TWITTER_BOT_TOKEN")
+    token_secret = os.getenv("TWITTER_BOT_TOKEN_SECRET")
+
+    media_ids = [media_id] if media_id else None
+
+    if not api_key or not api_secret_key or not token or not token_secret:
+        logger.error("Twitter: non properly configured")
+        return
+
+    if is_dev() and not ignore_dev:
         print(status)
         return random.randint(1, 1_000_000)
 
     auth = tweepy.OAuthHandler(api_key, api_secret_key)
     auth.set_access_token(token, token_secret)
     api = tweepy.API(auth, wait_on_rate_limit=True)
-    status = api.update_status(status)
+    status = api.update_status(status, media_ids=media_ids)
     return status.id
 
 
-def upload_screenshot(url):
-    bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
-    api_url = "https://spider.xojoc.pw/api/v0/screenshot"
-    auth = {"Authorization": f"Bearer {bearer_token}"}
-    parameters = {"url": url, "full_page": True}
-
-    resp = requests.get(api_url, parameters, headers=auth)
-    if not resp.ok:
-        print(resp.status_code)
-        print(resp.content)
+def mastodon_upload_screenshot(file, ignore_dev=False):
+    if not file:
         return
-    jimg = resp.json()
-    print(jimg["media_type"])
+    if is_dev() and not ignore_dev:
+        return
 
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
     auth = {"Authorization": f"Bearer {access_token}"}
     api_url = "https://mastodon.social/api/v1/media"
 
     files = {
-        "file": (
-            "screenshot.png",
-            base64.b64decode(jimg["content"]),
-            jimg["media_type"],
-        ),
+        "file": (file[0], file[1], file[2]),
     }
     parameters = {
-        "description": f"Screenshot of {url} taken with SpiderAPI",
+        "description": file[3],
         "focus": "(0,1)",
     }
 
@@ -74,8 +114,6 @@ def upload_screenshot(url):
         api_url, files=files, params=parameters, headers=auth
     )
     if not media.ok:
-        print(media.status_code)
-        print(media.content)
         return
 
     media = media.json()
@@ -106,17 +144,6 @@ def toot(status, media_id=None, ignore_dev=False):
     else:
         logger.error(f"Mastodon post: {r.status_code} {r.reason}\n{status}")
         return
-
-
-def toot_with_screenshot(status, url, ignore_dev=False):
-    media_id = None
-    try:
-        media_id = upload_screenshot(url)
-    except Exception as e:
-        logger.warning(f"Screenshot failed: {e}")
-        media_id = None
-
-    toot(status, media_id, ignore_dev)
 
 
 def get_random_website_stumblingon():
@@ -258,14 +285,33 @@ def execute():
         return False
     discussions_url, tags = get_discussions(url)
 
+    try:
+        screenshot = take_screenshot(url)
+    except Exception as e:
+        logger.warning(f"take screenshot: {e}")
+        screenshot = None
+
     status = build_status(
         title, url, discussions_url, tags, twitter_by, twitter_via
     )
-    tweet_id = tweet(status)
+
+    try:
+        twitter_media_id = twitter_upload_screenshot(screenshot)
+    except Exception as e:
+        logger.warning(f"twitter upload: {e}")
+        twitter_media_id = None
+
+    tweet_id = tweet(status, twitter_media_id)
     logger.info(f"Tweet: {tweet_id}")
 
+    try:
+        mastodon_media_id = mastodon_upload_screenshot(screenshot)
+    except Exception as e:
+        logger.warning(f"mastodon upload: {e}")
+        mastodon_media_id = None
+
     status = build_status(title, url, discussions_url, tags)
-    toot_id = toot_with_screenshot(status, url)
+    toot_id = toot(status, url, mastodon_media_id)
     logger.info(f"Toot: {toot_id}")
 
     return True
