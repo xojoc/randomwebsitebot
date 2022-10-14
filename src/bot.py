@@ -24,7 +24,7 @@ def take_screenshot(url):
     bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
     api_url = "https://spider.xojoc.pw/api/v0/screenshot"
     auth = {"Authorization": f"Bearer {bearer_token}"}
-    parameters = {"url": url, "full_page": True}
+    parameters = {"url": url, "full_page": False}
 
     resp = requests.get(api_url, parameters, headers=auth)
     if not resp.ok:
