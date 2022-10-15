@@ -311,7 +311,7 @@ def execute():
         mastodon_media_id = None
 
     status = build_status(title, url, discussions_url, tags)
-    toot_id = toot(status, url, mastodon_media_id)
+    toot_id = toot(status, mastodon_media_id)
     logger.info(f"Toot: {toot_id}")
 
     return True
