@@ -14,7 +14,7 @@ cp: lint poetry_export
 
 docker: poetry_export
 	@docker build -t randomwebsitebot .
-	@docker stop $$(docker ps -l -f name=randomwebsitebot --format '{{.ID}}')
+	-docker stop $$(docker ps -l -f name=randomwebsitebot --format '{{.ID}}')
 	@docker run --rm --name randomwebsitebot --env-file .env randomwebsitebot
 	@docker logs -f $$(docker ps -l -f name=randomwebsitebot --format '{{.ID}}')
 

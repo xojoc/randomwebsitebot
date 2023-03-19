@@ -15,6 +15,10 @@ from bs4 import BeautifulSoup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
+headers = {
+    "User-Agent": "RandomWebSite 1.0",
+}
+
 
 def is_dev():
     return os.getenv("APP_DEPLOYMENT_ENVIRONMENT", "").lower() != "prod"
@@ -175,13 +179,16 @@ def get_random_website():
 
 
 def get_website_info(url):
-    r = requests.get(url)
+    r = requests.get(url, headers=headers)
     if not r or not r.ok:
         return None, None, None, False
 
     h = BeautifulSoup(r.content, "lxml")
 
     title = h.title.text.strip()
+
+    if title == "Sign in - Google Accounts":
+        return None, None, None, False
 
     twitter_by = (
         h.select_one(
@@ -275,7 +282,15 @@ def build_status(
     return status.strip()
 
 
+def url_blacklisted(url):
+    if not url:
+        return True
+
+    res = requests.get(url)
+
+
 def execute():
+    url = None
     url = get_random_website()
     if not url:
         return False
@@ -320,13 +335,6 @@ def execute():
 def main():
     random.seed()
     while True:
-        t = 2 * 60 * 60
-        if is_dev():
-            t = 30
-
-        logger.info("Sleep...")
-        time.sleep(t)
-
         try:
             success = execute()
             if not success:
@@ -340,6 +348,13 @@ def main():
 
             logger.error(f"{e}\n\ntrying again...")
             continue
+
+        t = 2 * 60 * 60
+        if is_dev():
+            t = 30
+
+        logger.info("Sleep...")
+        time.sleep(t)
 
 
 if __name__ == "__main__":
