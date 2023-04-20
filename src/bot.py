@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import base64
 import logging
 import mimetypes
@@ -30,9 +28,13 @@ def take_screenshot(url):
     auth = {"Authorization": f"Bearer {bearer_token}"}
     parameters = {"url": url, "full_page": False}
 
-    resp = requests.get(api_url, parameters, headers=auth)
-    if not resp.ok:
-        return
+    try:
+        resp = requests.get(api_url, parameters, headers=auth, timeout=120)
+    except requests.exceptions.RequestException:
+        logger.exception(f"Screenshot: {url}")
+        return None
+    if not resp or not resp.ok:
+        return None
     jimg = resp.json()
     content = base64.b64decode(jimg["content"])
     mime = jimg["media_type"]
@@ -45,12 +47,12 @@ def take_screenshot(url):
     )
 
 
-def twitter_upload_screenshot(file, ignore_dev=False):
+def twitter_upload_screenshot(file):
     if not file:
-        return
+        return None
 
-    if is_dev() and not ignore_dev:
-        return
+    if is_dev():
+        return None
 
     api_key = os.getenv("TWITTER_ACCESS_API_KEY")
     api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
@@ -58,22 +60,25 @@ def twitter_upload_screenshot(file, ignore_dev=False):
     token_secret = os.getenv("TWITTER_BOT_TOKEN_SECRET")
 
     if not api_key or not api_secret_key or not token or not token_secret:
-        logger.error("Twitter: non properly configured")
-        return
+        logger.exception("Twitter: non properly configured")
+        return None
 
     auth = tweepy.OAuthHandler(api_key, api_secret_key)
     auth.set_access_token(token, token_secret)
     api = tweepy.API(auth, wait_on_rate_limit=True)
 
     media = api.simple_upload(
-        file[0], file=file[1], media_category="tweet_image"
+        file[0],
+        file=file[1],
+        media_category="tweet_image",
     )
 
     if media:
         return media.media_id
+    return None
 
 
-def tweet(status, media_id=None, ignore_dev=False):
+def tweet(status, media_id=None):
     api_key = os.getenv("TWITTER_ACCESS_API_KEY")
     api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
     token = os.getenv("TWITTER_BOT_TOKEN")
@@ -82,12 +87,12 @@ def tweet(status, media_id=None, ignore_dev=False):
     media_ids = [media_id] if media_id else None
 
     if not api_key or not api_secret_key or not token or not token_secret:
-        logger.error("Twitter: non properly configured")
-        return
+        logger.exception("Twitter: non properly configured")
+        return None
 
-    if is_dev() and not ignore_dev:
-        print(status)
-        return random.randint(1, 1_000_000)
+    if is_dev():
+        logger.info(status)
+        return random.randint(1, 1_000_000)  # noqa: S311
 
     auth = tweepy.OAuthHandler(api_key, api_secret_key)
     auth.set_access_token(token, token_secret)
@@ -96,11 +101,11 @@ def tweet(status, media_id=None, ignore_dev=False):
     return status.id
 
 
-def mastodon_upload_screenshot(file, ignore_dev=False):
+def mastodon_upload_screenshot(file):
     if not file:
-        return
-    if is_dev() and not ignore_dev:
-        return
+        return None
+    if is_dev():
+        return None
 
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
     auth = {"Authorization": f"Bearer {access_token}"}
@@ -114,27 +119,35 @@ def mastodon_upload_screenshot(file, ignore_dev=False):
         "focus": "(0,1)",
     }
 
-    media = requests.post(
-        api_url, files=files, params=parameters, headers=auth
-    )
-    if not media.ok:
-        return
+    try:
+        media = requests.post(
+            api_url,
+            files=files,
+            params=parameters,
+            headers=auth,
+            timeout=3 * 60,
+        )
+    except requests.exceptions.RequestException:
+        logger.exception("mastodon upload")
+        return None
+    if not media or not media.ok:
+        return None
 
     media = media.json()
 
     return media["id"]
 
 
-def toot(status, media_id=None, ignore_dev=False):
+def toot(status, media_id=None):
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
 
     if not access_token:
         logger.warning("Mastodon: non properly configured")
-        return
+        return None
 
-    if is_dev() and not ignore_dev:
-        print(status)
-        return random.randint(1, 1_000_000)
+    if is_dev():
+        logger.info(status)
+        return random.randint(1, 1_000_000)  # noqa: S311
 
     api_url = "https://mastodon.social/api/v1/statuses"
     auth = {"Authorization": f"Bearer {access_token}"}
@@ -142,67 +155,93 @@ def toot(status, media_id=None, ignore_dev=False):
     if media_id:
         parameters["media_ids[]"] = [media_id]
 
-    r = requests.post(api_url, data=parameters, headers=auth)
+    r = requests.post(api_url, data=parameters, headers=auth, timeout=5 * 60)
     if r.ok:
         return int(r.json()["id"])
-    else:
-        logger.error(f"Mastodon post: {r.status_code} {r.reason}\n{status}")
-        return
+
+    logger.exception(
+        f"Mastodon post: {r.status_code} {r.reason}\n{status}",
+    )
+    return None
 
 
 def get_random_website_stumblingon():
-    for _ in range(5):
+    try:
         r = requests.post(
             "https://service.stumblingon.com/getSite",
             json={"userId": "randomwebsitebot", "prevId": ""},
+            timeout=1 * 60,
         )
+    except requests.exceptions.RequestException:
+        logger.exception("StumblingOn failed")
+        return None
 
-        if r.json().get("ok"):
-            return r.json().get("url")
+    if not r or not r.ok:
+        return None
+    if r.json().get("ok"):
+        return r.json().get("url")
+    return None
 
 
 def get_random_website_forestlink():
-    for _ in range(5):
-        r = requests.get("https://theforest.link/api/site/")
-        if r.json().get("content"):
-            return r.json().get("content")
+    try:
+        r = requests.get("https://theforest.link/api/site/", timeout=1 * 60)
+    except requests.exceptions.RequestException:
+        logger.exception("The Forest Linke failed")
+        return None
+    if not r or not r.ok:
+        return None
+    if r.json().get("content"):
+        return r.json().get("content")
+    return None
+
+
+def get_random_website_wiby():
+    try:
+        r = requests.get("https://wiby.me/surprise/", timeout=1 * 60)
+    except requests.exceptions.RequestException:
+        logger.exception("Wiby failed")
+        return None
+
+    if not r or not r.ok:
+        return None
+
+    h = BeautifulSoup(r.content, "lxml")
+    meta = h.select('meta[http-equiv="refresh"]')[0]
+
+    return meta["content"].split("'")[1]
 
 
 random_website_functions = [
-    get_random_website_stumblingon,
+    # get_random_website_stumblingon,
     get_random_website_forestlink,
+    get_random_website_wiby,
 ]
 
 
 def get_random_website():
-    return random.choice(random_website_functions)()
+    return random.choice(random_website_functions)()  # noqa: S311
 
 
-def get_website_info(url):
-    r = requests.get(url, headers=headers)
+def get_website_info(url: str) -> tuple[str, str, bool]:
+    r = requests.get(url, headers=headers, timeout=3 * 60)
     if not r or not r.ok:
-        return None, None, None, False
+        return "", "", False
 
     h = BeautifulSoup(r.content, "lxml")
 
-    title = h.title.text.strip()
+    title = ""
+    if h.title:
+        title = h.title.text.strip()
 
     if title == "Sign in - Google Accounts":
-        return None, None, None, False
+        return "", "", False
 
-    twitter_by = (
-        h.select_one(
-            'meta[name="twitter:creator"], meta[property="twitter:creator"]'
-        )
-        or {}
-    ).get("content", "").removeprefix("@") or None
-
-    twitter_via = (
-        h.select_one(
-            'meta[name="twitter:site"], meta[property="twitter:site"]'
-        )
-        or {}
-    ).get("content", "").removeprefix("@") or None
+    meta = h.select_one(
+        'meta[name="twitter:creator"], meta[property="twitter:creator"]',
+    )
+    meta_dict = meta.attrs if meta else {}
+    twitter_by = meta_dict.get("content", "").removeprefix("@") or ""
 
     if twitter_by:
         parts = twitter_by.split("/")
@@ -213,28 +252,23 @@ def get_website_info(url):
         twitter_by = twitter_by.removeprefix("@")
 
         if " " in twitter_by:
-            twitter_by = None
+            twitter_by = ""
 
-    if twitter_via:
-        parts = twitter_via.split("/")
-        parts = [p for p in parts if p]
-        twitter_via = parts[-1]
-        twitter_via = twitter_via.strip()
-
-        twitter_via = twitter_via.removeprefix("@")
-
-        if " " in twitter_via:
-            twitter_via = None
-
-    return title, twitter_by, twitter_via, True
+    return title, twitter_by, True
 
 
 def get_discussions(url):
     endpoint = "https://discu.eu/api/v0/discussion_counts/url/" + url_quote(
-        url
+        url,
     )
     token = os.getenv("DISCU_ACCESS_TOKEN")
-    r = requests.get(endpoint, headers={"Authorization": f"Bearer {token}"})
+    r = requests.get(
+        endpoint,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=120,
+    )
+    if not r or not r.ok:
+        return None, None
     j = r.json()
     if (
         not j.get("total_comments")
@@ -254,7 +288,11 @@ def __hashtags(tags):
 
 
 def build_status(
-    title, url, discussions_url, tags, by_account=None, via_account=None
+    title,
+    url,
+    discussions_url,
+    tags,
+    by_account=None,
 ):
     hashtags = __hashtags(tags)
 
@@ -276,8 +314,6 @@ def build_status(
 
     if by_account:
         status += f"by @{by_account}\n\n"
-    elif via_account:
-        status += f"via @{via_account}\n\n"
 
     return status.strip()
 
@@ -286,7 +322,7 @@ def url_blacklisted(url):
     if not url:
         return True
 
-    res = requests.get(url)
+    return False
 
 
 def execute():
@@ -294,36 +330,28 @@ def execute():
     url = get_random_website()
     if not url:
         return False
-    title, twitter_by, twitter_via, success = get_website_info(url)
+    title, twitter_by, success = get_website_info(url)
     if not success:
         logger.warning(f"Cannot fetch website: {url} ...skipping")
         return False
     discussions_url, tags = get_discussions(url)
 
-    try:
-        screenshot = take_screenshot(url)
-    except Exception as e:
-        logger.warning(f"take screenshot: {e}")
-        screenshot = None
+    screenshot = take_screenshot(url)
 
     status = build_status(
-        title, url, discussions_url, tags, twitter_by, twitter_via
+        title,
+        url,
+        discussions_url,
+        tags,
+        twitter_by,
     )
 
-    try:
-        twitter_media_id = twitter_upload_screenshot(screenshot)
-    except Exception as e:
-        logger.warning(f"twitter upload: {e}")
-        twitter_media_id = None
+    twitter_media_id = twitter_upload_screenshot(screenshot)
 
     tweet_id = tweet(status, twitter_media_id)
     logger.info(f"Tweet: {tweet_id}")
 
-    try:
-        mastodon_media_id = mastodon_upload_screenshot(screenshot)
-    except Exception as e:
-        logger.warning(f"mastodon upload: {e}")
-        mastodon_media_id = None
+    mastodon_media_id = mastodon_upload_screenshot(screenshot)
 
     status = build_status(title, url, discussions_url, tags)
     toot_id = toot(status, mastodon_media_id)
@@ -335,18 +363,20 @@ def execute():
 def main():
     random.seed()
     while True:
+        success = False
         try:
             success = execute()
-            if not success:
-                logger.warning("Failed... retry")
-                time.sleep(1)
-                continue
-        except Exception as e:
+        except Exception:
             import traceback
 
-            logger.error(traceback.format_exc())
+            logger.exception(traceback.format_exc())
 
-            logger.error(f"{e}\n\ntrying again...")
+            logger.exception("\n\ntrying again...")
+            success = False
+
+        if not success:
+            logger.warning("Failed... retry")
+            time.sleep(3)
             continue
 
         t = 2 * 60 * 60

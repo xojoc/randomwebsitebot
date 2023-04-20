@@ -8,7 +8,9 @@ poetry_export:
 run:
 	@poetry run ./docker-entrypoint.sh
 
-cp: lint poetry_export
+pre-commit: lint test poetry_export
+
+cp:
 	@git commit -a
 	@git push origin main
 
@@ -25,8 +27,12 @@ shell:
 	poetry run python
 
 lint:
-	@poetry run flake8 --extend-ignore E501,E741,E203 | tac
-	# @poetry run mypy --install-types --non-interactive .
+	@poetry run ruff check . | tac
 
-# test:
-# 	@poetry run python -Wa manage.py test --shuffle --noinput --keepdb
+test:
+	@poetry run python -m unittest
+
+update:
+	poetry self update
+	poetry update
+	poetry types update
