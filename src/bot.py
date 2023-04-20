@@ -28,6 +28,9 @@ def take_screenshot(url):
     auth = {"Authorization": f"Bearer {bearer_token}"}
     parameters = {"url": url, "full_page": False}
 
+    if is_dev():
+        return None
+
     try:
         resp = requests.get(api_url, parameters, headers=auth, timeout=120)
     except requests.exceptions.RequestException:
@@ -257,16 +260,20 @@ def get_website_info(url: str) -> tuple[str, str, bool]:
     return title, twitter_by, True
 
 
-def get_discussions(url):
+def get_discussions(url: str) -> tuple[str | None, list[str] | None]:
     endpoint = "https://discu.eu/api/v0/discussion_counts/url/" + url_quote(
         url,
     )
     token = os.getenv("DISCU_ACCESS_TOKEN")
-    r = requests.get(
-        endpoint,
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=120,
-    )
+    try:
+        r = requests.get(
+            endpoint,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=120,
+        )
+    except requests.exceptions.RequestException:
+        logger.exception("Discu.eu failed")
+        return None, None
     if not r or not r.ok:
         return None, None
     j = r.json()
@@ -361,17 +368,14 @@ def execute():
 
 
 def main():
+    logger.info("Started...")
     random.seed()
     while True:
         success = False
         try:
             success = execute()
         except Exception:
-            import traceback
-
-            logger.exception(traceback.format_exc())
-
-            logger.exception("\n\ntrying again...")
+            logger.exception("\n\ntrying again...", stack_info=True)
             success = False
 
         if not success:
