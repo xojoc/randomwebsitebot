@@ -164,6 +164,12 @@ lxml==4.9.2 ; python_version >= "3.11" and python_version < "4.0" \
 oauthlib==3.2.2 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
     --hash=sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918
+praw==7.7.0 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:090d209b35f79dfa36082ed1cdaa0f9a753b9277a69cfe8f9f32fa1827411a5a \
+    --hash=sha256:22155c4b3006733a5ab0754136cf2226917747b61ec037ee335246fe0db5420e
+prawcore==2.3.0 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:48c17db447fa06a13ca3e722201f443031437708daa736c05a1df895fbcceff5 \
+    --hash=sha256:daf1ccd4b7a80dc4e6567d48336d782e94a9a6dad83770fc2edf76dc9a84f56d
 requests-oauthlib==1.3.1 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5 \
     --hash=sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a
@@ -176,6 +182,12 @@ soupsieve==2.4.1 ; python_version >= "3.11" and python_version < "4.0" \
 tweepy==4.13.0 ; python_version >= "3.11" and python_version < "4.0" \
     --hash=sha256:097425335f9f6674826ba7e72b2247bbca39c9ca0a0bd82f30a38a5bef8c6c88 \
     --hash=sha256:95207c41023b75a066b0b442a0a907acada610a3cfa09c4ccb5f2d9e522c33b5
+update-checker==0.18.0 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:6a2d45bb4ac585884a6b03f9eade9161cedd9e8111545141e9aa9058932acb13 \
+    --hash=sha256:cbba64760a36fe2640d80d85306e8fe82b6816659190993b7bdabadee4d4bbfd
 urllib3==1.26.15 ; python_version >= "3.11" and python_version < "4" \
     --hash=sha256:8a388717b9476f934a21484e8c8e61875ab60644d29b9b39e11e4b9dc1c6b305 \
     --hash=sha256:aa751d169e23c7479ce47a0cb0da579e3ede798f994f5816a74e4f4500dcea42
+websocket-client==1.5.1 ; python_version >= "3.11" and python_version < "4.0" \
+    --hash=sha256:3f09e6d8230892547132177f575a4e3e73cfdf06526e20cc02aa1c3b47184d40 \
+    --hash=sha256:cdf5877568b7e83aa7cf2244ab56a3213de587bbe0ce9d8b9600fc77b455d89e

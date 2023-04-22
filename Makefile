@@ -9,6 +9,7 @@ run:
 	@poetry run ./docker-entrypoint.sh
 
 pre-commit: lint test poetry_export
+	@git add requirements.txt
 
 cp:
 	@git commit -a
