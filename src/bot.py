@@ -22,6 +22,10 @@ def is_dev():
     return os.getenv("APP_DEPLOYMENT_ENVIRONMENT", "").lower() != "prod"
 
 
+def set_env(env: str) -> None:
+    os.environ["APPL_DEPLOYMENT_ENVIRONMENT"] = env
+
+
 def take_screenshot(url):
     bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
     api_url = "https://spider.xojoc.pw/api/v0/screenshot"
