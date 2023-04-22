@@ -10,11 +10,13 @@ import requests
 import tweepy
 from bs4 import BeautifulSoup
 
+from src import reddit
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 headers = {
-    "User-Agent": "RandomWebSite 1.0",
+    "User-Agent": os.getenv("USERAGENT", "Useragent"),
 }
 
 
@@ -219,15 +221,27 @@ def get_random_website_wiby():
     return meta["content"].split("'")[1]
 
 
+def get_random_website_reddit():
+    subreddits = ["InternetIsBeautiful"]
+    subreddit = random.choice(subreddits)  # noqa: S311
+    return reddit.get_random_url(subreddit, min_score=50, min_comments=10)
+
+
 random_website_functions = [
     # get_random_website_stumblingon,
     get_random_website_forestlink,
     get_random_website_wiby,
+    get_random_website_reddit,
 ]
+
+random_website_weights = [40, 40, 20]
 
 
 def get_random_website():
-    return random.choice(random_website_functions)()  # noqa: S311
+    return random.choices(  # noqa: S311
+        random_website_functions,
+        weights=random_website_weights,
+    )[0]()
 
 
 def get_website_info(url: str) -> tuple[str, str, bool]:
