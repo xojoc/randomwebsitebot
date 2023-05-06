@@ -15,7 +15,7 @@ cp:
 	@git commit -a
 	@git push origin main
 
-docker: poetry_export
+d: poetry_export
 	@docker build -t randomwebsitebot .
 	-docker stop $$(docker ps -l -f name=randomwebsitebot --format '{{.ID}}')
 	@docker run --rm --name randomwebsitebot --env-file .env randomwebsitebot

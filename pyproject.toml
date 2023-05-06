@@ -20,9 +20,9 @@ types-beautifulsoup4 = "^4.12.0.3"
 types-lxml = "^2023.3.28"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23"
-mypy = "^1"
-ruff = "^0.0.262"
+black = "*"
+mypy = "*"
+ruff = "*"
 
 [tool.ruff]
 select = ['ALL']
