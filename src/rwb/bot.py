@@ -8,6 +8,7 @@ from urllib.parse import quote as url_quote
 
 import requests
 import tweepy
+import tweepy.errors
 from bs4 import BeautifulSoup
 
 from . import reddit
@@ -164,7 +165,12 @@ def toot(status, media_id=None):
     if media_id:
         parameters["media_ids[]"] = [media_id]
 
-    r = requests.post(api_url, data=parameters, headers=auth, timeout=5 * 60)
+    r = requests.post(
+        api_url,
+        data=parameters,
+        headers=auth,
+        timeout=5 * 60,
+    )
     if r.ok:
         return int(r.json()["id"])
 
@@ -371,10 +377,13 @@ def execute():
         twitter_by,
     )
 
-    twitter_media_id = twitter_upload_screenshot(screenshot)
+    try:
+        twitter_media_id = twitter_upload_screenshot(screenshot)
 
-    tweet_id = tweet(status, twitter_media_id)
-    logger.info(f"Tweet: {tweet_id}")
+        tweet_id = tweet(status, twitter_media_id)
+        logger.info(f"Tweet: {tweet_id}")
+    except tweepy.errors.Unauthorized as e:
+        logger.warning(f"Twitter: {e}")
 
     mastodon_media_id = mastodon_upload_screenshot(screenshot)
 
