@@ -64,17 +64,22 @@ def twitter_upload_screenshot(file):
     if is_dev():
         return None
 
-    api_key = os.getenv("TWITTER_ACCESS_API_KEY")
-    api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
-    token = os.getenv("TWITTER_BOT_TOKEN")
-    token_secret = os.getenv("TWITTER_BOT_TOKEN_SECRET")
+    consumer_key = os.getenv("TWITTER_CONSUMER_KEY")
+    consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
+    access_token = os.getenv("TWITTER_ACCESS_TOKEN")
+    access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
-    if not api_key or not api_secret_key or not token or not token_secret:
+    if (
+        not consumer_key
+        or not consumer_secret
+        or not access_token
+        or not access_token_secret
+    ):
         logger.exception("Twitter: non properly configured")
         return None
 
-    auth = tweepy.OAuthHandler(api_key, api_secret_key)
-    auth.set_access_token(token, token_secret)
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
     api = tweepy.API(auth, wait_on_rate_limit=True)
 
     media = api.simple_upload(
@@ -89,14 +94,19 @@ def twitter_upload_screenshot(file):
 
 
 def tweet(status, media_id=None):
-    api_key = os.getenv("TWITTER_ACCESS_API_KEY")
-    api_secret_key = os.getenv("TWITTER_ACCESS_API_SECRET_KEY")
-    token = os.getenv("TWITTER_BOT_TOKEN")
-    token_secret = os.getenv("TWITTER_BOT_TOKEN_SECRET")
+    consumer_key = os.getenv("TWITTER_CONSUMER_KEY")
+    consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
+    access_token = os.getenv("TWITTER_ACCESS_TOKEN")
+    access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
     media_ids = [media_id] if media_id else None
 
-    if not api_key or not api_secret_key or not token or not token_secret:
+    if (
+        not consumer_key
+        or not consumer_secret
+        or not access_token
+        or not access_token_secret
+    ):
         logger.exception("Twitter: non properly configured")
         return None
 
@@ -104,11 +114,18 @@ def tweet(status, media_id=None):
         logger.info(status)
         return random.randint(1, 1_000_000)  # noqa: S311
 
-    auth = tweepy.OAuthHandler(api_key, api_secret_key)
-    auth.set_access_token(token, token_secret)
-    api = tweepy.API(auth, wait_on_rate_limit=True)
-    status = api.update_status(status, media_ids=media_ids)
-    return status.id
+    api = tweepy.Client(
+        consumer_key=consumer_key,
+        consumer_secret=consumer_secret,
+        access_token=access_token,
+        access_token_secret=access_token_secret,
+        wait_on_rate_limit=True,
+    )
+    status = api.create_tweet(text=status, media_ids=media_ids)
+
+    # example response:
+    #    Response(data={'edit_history_tweet_ids': ['1702054393854464183'], 'id': '1702054393854464183', 'text': 'Hello again'}, includes={}, errors=[], meta={})
+    return status.data["id"]
 
 
 def mastodon_upload_screenshot(file):
