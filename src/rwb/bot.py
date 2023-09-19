@@ -401,7 +401,7 @@ def execute():
         logger.info(f"Tweet: {tweet_id}")
     except tweepy.errors.Unauthorized as e:
         logger.warning(f"Twitter: {e}")
-    except tweepy.errors.Frobidden as e:
+    except Exception as e:  # noqa: BLE001
         logger.warning(f"Twitter: {e}")
 
     mastodon_media_id = mastodon_upload_screenshot(screenshot)
