@@ -11,7 +11,7 @@ run:
 pre-commit: lint test poetry_export
 	@git add requirements.txt
 
-cp:
+cp: lint
 	@git commit -a
 	@git push origin main
 
