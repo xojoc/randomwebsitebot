@@ -8,6 +8,7 @@ from urllib.parse import quote as url_quote
 
 import requests
 import tweepy
+import tweepy.client
 import tweepy.errors
 from bs4 import BeautifulSoup
 
@@ -80,7 +81,7 @@ def twitter_upload_screenshot(file):
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
-    api = tweepy.API(auth, wait_on_rate_limit=True)
+    api = tweepy.API(auth, wait_on_rate_limit=False)
 
     media = api.simple_upload(
         file[0],
@@ -119,12 +120,16 @@ def tweet(status, media_id=None):
         consumer_secret=consumer_secret,
         access_token=access_token,
         access_token_secret=access_token_secret,
-        wait_on_rate_limit=True,
+        wait_on_rate_limit=False,
     )
     status = api.create_tweet(text=status, media_ids=media_ids)
 
+    if not isinstance(status, tweepy.client.Response):
+        return None
+
     # example response:
     #    Response(data={'edit_history_tweet_ids': ['1702054393854464183'], 'id': '1702054393854464183', 'text': 'Hello again'}, includes={}, errors=[], meta={})
+
     return status.data["id"]
 
 
@@ -257,7 +262,7 @@ random_website_functions = [
     get_random_website_reddit,
 ]
 
-random_website_weights = [40, 40, 20]
+random_website_weights = [50, 30, 20]
 
 
 def get_random_website():
@@ -429,7 +434,7 @@ def main():
             time.sleep(3)
             continue
 
-        t = 2 * 60 * 60
+        t = 3 * 60 * 60
         if is_dev():
             t = 30
 
