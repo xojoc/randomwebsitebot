@@ -1,10 +1,12 @@
+# Copyright 2023 Alexandru Cojocaru AGPLv3 or later - no warranty!
+"""Wrappers around the Reddit API."""
 import os
 import time
 
 import praw
 
 
-def client(
+def __client(
     username: str | None = None,
     password: str | None = None,
 ) -> praw.Reddit:
@@ -24,7 +26,16 @@ def get_random_url(
     min_score: int = 10,
     min_comments: int = 10,
 ) -> str | None:
-    c = client()
+    """Get a random website from Reddit.
+
+    Args:
+        subreddit: from which subreddit to get the url
+        min_score: minimum score of the thread
+        min_comments: minimum nr. comments in the thread
+
+    Returns: random URL or nothing
+    """
+    c = __client()
 
     sub = c.subreddit(subreddit)
     for i in range(5):

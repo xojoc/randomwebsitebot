@@ -1,9 +1,15 @@
+# Copyright 2023 Alexandru Cojocaru AGPLv3 or later - no warranty!
+"""Main functionality of the bot."""
+
+
 import base64
+import datetime
 import logging
 import mimetypes
 import os
 import random
 import time
+import typing
 from urllib.parse import quote as url_quote
 
 import requests
@@ -17,32 +23,29 @@ from . import reddit
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
+
 headers = {
     "User-Agent": os.getenv("USERAGENT", "Useragent"),
 }
 
 
-def is_dev():
+def __is_dev() -> bool:
     return os.getenv("APP_DEPLOYMENT_ENVIRONMENT", "").lower() != "prod"
 
 
-def set_env(env: str) -> None:
-    os.environ["APPL_DEPLOYMENT_ENVIRONMENT"] = env
-
-
-def take_screenshot(url):
+def __take_screenshot(url: str) -> None | tuple[str, bytes, str, str]:
     bearer_token = os.getenv("SPIDERAPI_BEARER_TOKEN")
     api_url = "https://spider.xojoc.pw/api/v0/screenshot"
     auth = {"Authorization": f"Bearer {bearer_token}"}
     parameters = {"url": url, "full_page": False}
 
-    if is_dev():
+    if __is_dev():
         return None
 
     try:
         resp = requests.get(api_url, parameters, headers=auth, timeout=120)
     except requests.exceptions.RequestException:
-        logger.exception(f"Screenshot: {url}")
+        logger.exception("Screenshot: %s", url)
         return None
     if not resp or not resp.ok:
         return None
@@ -58,11 +61,13 @@ def take_screenshot(url):
     )
 
 
-def twitter_upload_screenshot(file):
+def __twitter_upload_screenshot(
+    file: tuple[str, bytes, str, str],
+) -> None | str:
     if not file:
         return None
 
-    if is_dev():
+    if __is_dev():
         return None
 
     consumer_key = os.getenv("TWITTER_CONSUMER_KEY")
@@ -94,7 +99,7 @@ def twitter_upload_screenshot(file):
     return None
 
 
-def tweet(status, media_id=None):
+def __tweet(status: str, media_id: str | None = None) -> str | None:
     consumer_key = os.getenv("TWITTER_CONSUMER_KEY")
     consumer_secret = os.getenv("TWITTER_CONSUMER_SECRET")
     access_token = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -111,9 +116,9 @@ def tweet(status, media_id=None):
         logger.exception("Twitter: non properly configured")
         return None
 
-    if is_dev():
+    if __is_dev():
         logger.info(status)
-        return random.randint(1, 1_000_000)  # noqa: S311
+        return str(random.randint(1, 1_000_000))  # noqa: S311
 
     api = tweepy.Client(
         consumer_key=consumer_key,
@@ -122,21 +127,18 @@ def tweet(status, media_id=None):
         access_token_secret=access_token_secret,
         wait_on_rate_limit=False,
     )
-    status = api.create_tweet(text=status, media_ids=media_ids)
+    status_response = api.create_tweet(text=status, media_ids=media_ids)
+    status_response = typing.cast(tweepy.client.Response, status_response)
 
-    if not isinstance(status, tweepy.client.Response):
-        return None
-
-    # example response:
-    #    Response(data={'edit_history_tweet_ids': ['1702054393854464183'], 'id': '1702054393854464183', 'text': 'Hello again'}, includes={}, errors=[], meta={})
-
-    return status.data["id"]
+    return status_response.data["id"]
 
 
-def mastodon_upload_screenshot(file):
+def __mastodon_upload_screenshot(
+    file: tuple[str, bytes, str, str],
+) -> None | str:
     if not file:
         return None
-    if is_dev():
+    if __is_dev():
         return None
 
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
@@ -170,20 +172,20 @@ def mastodon_upload_screenshot(file):
     return media["id"]
 
 
-def toot(status, media_id=None):
+def __toot(status: str, media_id: str | None = None) -> str | None:
     access_token = os.getenv("MASTODON_BOT_ACCESS_TOKEN")
 
     if not access_token:
         logger.warning("Mastodon: non properly configured")
         return None
 
-    if is_dev():
+    if __is_dev():
         logger.info(status)
-        return random.randint(1, 1_000_000)  # noqa: S311
+        return str(random.randint(1, 1_000_000))  # noqa: S311
 
     api_url = "https://mastodon.social/api/v1/statuses"
     auth = {"Authorization": f"Bearer {access_token}"}
-    parameters = {"status": status}
+    parameters: dict[str, str | list[str]] = {"status": status}
     if media_id:
         parameters["media_ids[]"] = [media_id]
 
@@ -194,15 +196,18 @@ def toot(status, media_id=None):
         timeout=5 * 60,
     )
     if r.ok:
-        return int(r.json()["id"])
+        return str(r.json()["id"])
 
     logger.exception(
-        f"Mastodon post: {r.status_code} {r.reason}\n{status}",
+        "Mastodon post: %s %s\n%s",
+        r.status_code,
+        r.reason,
+        status,
     )
     return None
 
 
-def get_random_website_stumblingon():
+def __get_random_website_stumblingon() -> None | str:
     try:
         r = requests.post(
             "https://service.stumblingon.com/getSite",
@@ -220,7 +225,7 @@ def get_random_website_stumblingon():
     return None
 
 
-def get_random_website_forestlink():
+def __get_random_website_forestlink() -> None | str:
     try:
         r = requests.get("https://theforest.link/api/site/", timeout=1 * 60)
     except requests.exceptions.RequestException:
@@ -233,7 +238,7 @@ def get_random_website_forestlink():
     return None
 
 
-def get_random_website_wiby():
+def __get_random_website_wiby() -> None | str:
     try:
         r = requests.get("https://wiby.me/surprise/", timeout=1 * 60)
     except requests.exceptions.RequestException:
@@ -245,11 +250,14 @@ def get_random_website_wiby():
 
     h = BeautifulSoup(r.content, "lxml")
     meta = h.select('meta[http-equiv="refresh"]')[0]
+    refresh = meta.get("content")
+    if not refresh:
+        return None
 
-    return meta["content"].split("'")[1]
+    return " ".join(refresh).split("'")[1]
 
 
-def get_random_website_reddit():
+def __get_random_website_reddit() -> str | None:
     subreddits = ["InternetIsBeautiful"]
     subreddit = random.choice(subreddits)  # noqa: S311
     return reddit.get_random_url(subreddit, min_score=50, min_comments=10)
@@ -257,22 +265,22 @@ def get_random_website_reddit():
 
 random_website_functions = [
     # get_random_website_stumblingon,
-    get_random_website_forestlink,
-    get_random_website_wiby,
-    get_random_website_reddit,
+    __get_random_website_forestlink,
+    __get_random_website_wiby,
+    __get_random_website_reddit,
 ]
 
 random_website_weights = [50, 30, 20]
 
 
-def get_random_website():
+def __get_random_website() -> str | None:
     return random.choices(  # noqa: S311
         random_website_functions,
         weights=random_website_weights,
     )[0]()
 
 
-def get_website_info(url: str) -> tuple[str, str, bool]:
+def __get_website_info(url: str) -> tuple[str, str, bool]:
     r = requests.get(url, headers=headers, timeout=3 * 60)
     if not r or not r.ok:
         return "", "", False
@@ -306,7 +314,7 @@ def get_website_info(url: str) -> tuple[str, str, bool]:
     return title, twitter_by, True
 
 
-def get_discussions(url: str) -> tuple[str | None, list[str] | None]:
+def __get_discussions(url: str) -> tuple[str | None, list[str] | None]:
     endpoint = "https://discu.eu/api/v0/discussion_counts/url/" + url_quote(
         url,
     )
@@ -333,20 +341,19 @@ def get_discussions(url: str) -> tuple[str | None, list[str] | None]:
     return j.get("discussions_url"), j.get("tags")
 
 
-def __hashtags(tags):
+def __hashtags(tags: list[str] | None) -> list[str]:
     tags = tags or []
     replacements = {"c": "cprogramming"}
-    tags = (replacements.get(t, t) for t in tags)
-    return sorted(["#" + t for t in tags])
+    return sorted(["#" + t for t in (replacements.get(t, t) for t in tags)])
 
 
-def build_status(
-    title,
-    url,
-    discussions_url,
-    tags,
-    by_account=None,
-):
+def __build_status(
+    title: str,
+    url: str,
+    discussions_url: str | None,
+    tags: list[str] | None,
+    by_account: str | None = None,
+) -> str:
     hashtags = __hashtags(tags)
 
     max_title_len = 50
@@ -371,27 +378,29 @@ def build_status(
     return status.strip()
 
 
-def url_blacklisted(url):
+def __url_blacklisted(url: str) -> bool:
     if not url:
         return True
 
     return False
 
 
-def execute():
+def __execute() -> bool:
     url = None
-    url = get_random_website()
+    url = __get_random_website()
     if not url:
         return False
-    title, twitter_by, success = get_website_info(url)
-    if not success:
-        logger.warning(f"Cannot fetch website: {url} ...skipping")
+    if __url_blacklisted(url):
         return False
-    discussions_url, tags = get_discussions(url)
+    title, twitter_by, success = __get_website_info(url)
+    if not success:
+        logger.warning("Cannot fetch website: %s ...skipping", url)
+        return False
+    discussions_url, tags = __get_discussions(url)
 
-    screenshot = take_screenshot(url)
+    screenshot = __take_screenshot(url)
 
-    status = build_status(
+    status = __build_status(
         title,
         url,
         discussions_url,
@@ -400,43 +409,73 @@ def execute():
     )
 
     try:
-        twitter_media_id = twitter_upload_screenshot(screenshot)
+        twitter_media_id = None
+        if screenshot:
+            twitter_media_id = __twitter_upload_screenshot(screenshot)
 
-        tweet_id = tweet(status, twitter_media_id)
-        logger.info(f"Tweet: {tweet_id}")
-    except tweepy.errors.Unauthorized as e:
-        logger.warning(f"Twitter: {e}")
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Twitter: {e}")
+        tweet_id = __tweet(status, twitter_media_id)
+        logger.info("Tweet: %s", tweet_id)
+    except tweepy.errors.Unauthorized:
+        logger.warning("Twitter", exc_info=True)
+    except Exception:  # noqa: BLE001
+        logger.warning("Twitter", exc_info=True)
 
-    mastodon_media_id = mastodon_upload_screenshot(screenshot)
+    mastodon_media_id = None
+    if screenshot:
+        mastodon_media_id = __mastodon_upload_screenshot(screenshot)
 
-    status = build_status(title, url, discussions_url, tags)
-    toot_id = toot(status, mastodon_media_id)
-    logger.info(f"Toot: {toot_id}")
+    status = __build_status(title, url, discussions_url, tags)
+    toot_id = __toot(status, mastodon_media_id)
+    logger.info("Toot: %s", toot_id)
 
     return True
 
 
-def main():
+hours_interval = 12
+
+
+def __sleep_until_next_time() -> None:
+    now = datetime.datetime.now(tz=datetime.UTC)
+    hour = now.hour
+    later = datetime.datetime(
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        tzinfo=now.tzinfo,
+    )
+    later += datetime.timedelta(hours=hours_interval - hour % hours_interval)
+
+    delta = later - now
+    logger.info(
+        "Sleep for %s seconds until %s (now is %s)...",
+        delta.total_seconds(),
+        later,
+        now,
+    )
+    time.sleep(delta.total_seconds())
+
+
+def main() -> None:
+    """Loop indefinetly and post to Twitter and Mastodon every few hours."""
     logger.info("Started...")
     random.seed()
     while True:
+        now = datetime.datetime.now(tz=datetime.UTC)
+        min_slack = 2
+        if not (now.hour % hours_interval == 0 and now.minute < min_slack):
+            __sleep_until_next_time()
+
         success = False
         try:
-            success = execute()
+            success = __execute()
         except Exception:
             logger.exception("\n\ntrying again...", stack_info=True)
             success = False
 
         if not success:
             logger.warning("Failed... retry")
-            time.sleep(3)
+            time.sleep(30)
             continue
 
-        t = 3 * 60 * 60
-        if is_dev():
-            t = 30
-
-        logger.info("Sleep...")
-        time.sleep(t)
+        __sleep_until_next_time()

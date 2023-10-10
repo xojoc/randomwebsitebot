@@ -21,30 +21,74 @@ types-lxml = "^2023.3.28"
 
 [tool.poetry.group.dev.dependencies]
 black = "*"
-mypy = "*"
 ruff = "*"
 
 [tool.ruff]
 select = ['ALL']
-ignore = ['E501',
-          'D', # ignore docs for now
-          'D100', 'D101', 'D102', 'D103', # missing doc strings
-          'G004', # Logging statement uses f-string --> reenable
-          'ERA001' # commented out code
-          ]
+ignore = [
 
+	#'E501',
+	#'D', # ignore docs for now
+	#  'D100', 'D101', 'D102', 'D103', # missing doc strings
+	#  'G004', # Logging statement uses f-string --> reenable
+	#  'ERA001' # commented out code
+          ]
 
 line-length = 79
 target-version = 'py311'
+preview = true
 
-[tool.ruff.flake8-annotations]
-ignore-fully-untyped = true
+[tool.ruff.extend-per-file-ignores]
+"__init__.py" = ["CPY001", "D104"]
+"test_*.py" = [
+        'D', # documentation warnings
+        'ANN', # annotations
+	'S101', # asserts 
+        'PLR6301' # self not used 
+]
 
+# [tool.ruff.flake8-annotations]
+# ignore-fully-untyped = true
 [tool.ruff.flake8-unused-arguments]
 ignore-variadic-names = true
-
 [tool.ruff.isort]
 combine-as-imports = true
+[tool.black]
+line-length = 79
+[tool.ruff.pydocstyle]
+convention = 'google'
+
+[tool.pyright]
+typeCheckingMode = 'basic'
+reportUnnecessaryIsInstance = 'warning'
+reportUnnecessaryCast = 'warning'
+reportUnnecessaryComparison = 'warning'
+reportUnnecessaryContains = 'warning'
+reportImplicitStringConcatenation = 'warning'
+reportUnusedCallResult = 'warning'
+reportUnusedExpression = 'warning'
+reportUnnecessaryTypeIgnoreComment = 'warning'
+reportMatchNotExhaustive = 'warning'
+reportImplicitOverride = 'warning'
+reportShadowedImports = 'warning'
+reportPropertyTypeMismatch = 'warning'
+reportFunctionMemberAccess = 'warning'
+reportImportCycles = 'warning'
+reportUnusedImport = false
+reportUnusedClass = false
+reportUnusedFunction = false
+reportUnusedVariable = false
+reportDuplicateImport = 'warning'
+reportPrivateUsage = 'warning'
+reportConstantRedefinition = 'warning'
+reportDeprecated = 'warning'
+reportIncompatibleMethodOverride = 'warning'
+reportIncompatibleVariableOverride = 'warning'
+reportInconsistentConstructor = 'warning'
+reportOverlappingOverload = 'warning'
+reportMissingSuperCall = 'warning'
+reportUninitializedInstanceVariable = 'warning'
+
 
 
 [build-system]
