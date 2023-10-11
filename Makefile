@@ -14,6 +14,7 @@ pre-commit: lint test poetry_export
 cp: lint test
 	@git commit -a
 	@git push origin main
+	@git status
 
 d: poetry_export
 	@docker build -t randomwebsitebot .

@@ -25,15 +25,6 @@ ruff = "*"
 
 [tool.ruff]
 select = ['ALL']
-ignore = [
-
-	#'E501',
-	#'D', # ignore docs for now
-	#  'D100', 'D101', 'D102', 'D103', # missing doc strings
-	#  'G004', # Logging statement uses f-string --> reenable
-	#  'ERA001' # commented out code
-          ]
-
 line-length = 79
 target-version = 'py311'
 preview = true
@@ -47,10 +38,6 @@ preview = true
         'PLR6301' # self not used 
 ]
 
-# [tool.ruff.flake8-annotations]
-# ignore-fully-untyped = true
-[tool.ruff.flake8-unused-arguments]
-ignore-variadic-names = true
 [tool.ruff.isort]
 combine-as-imports = true
 [tool.black]
